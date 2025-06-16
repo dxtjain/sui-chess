@@ -1,0 +1,47 @@
+{
+  "name": "web3-chess-game",
+  "version": "1.0.0",
+  "description": "A comprehensive Web3 chess game built on the Sui blockchain",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "backend:dev": "npm run dev --prefix backend",
+    "backend:start": "npm run start --prefix backend",
+    "contracts:build": "cd sui-contracts && sui move build",
+    "contracts:test": "cd sui-contracts && sui move test",
+    "contracts:publish": "cd sui-contracts && sui client publish --gas-budget 100000000",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "clean": "rm -rf node_modules frontend/node_modules backend/node_modules frontend/dist backend/dist",
+    "lint": "npm run lint --prefix frontend && npm run lint --prefix backend",
+    "type-check": "npm run type-check --prefix frontend"
+  },
+  "keywords": [
+    "web3",
+    "chess",
+    "sui",
+    "blockchain",
+    "nft",
+    "gaming",
+    "move",
+    "dapp"
+  ],
+  "author": "Web3 Chess Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/web3-chess-game.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/web3-chess-game/issues"
+  },
+  "homepage": "https://github.com/yourusername/web3-chess-game#readme"
+} 

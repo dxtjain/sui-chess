@@ -1,0 +1,52 @@
+name: Deploy Web3 Chess Game
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-contracts:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install Sui CLI
+      run: |
+        curl -fLJO https://github.com/MystenLabs/sui/releases/download/devnet-v1.0.0/sui-devnet-v1.0.0-ubuntu-x86_64.tgz
+        tar -xzf sui-devnet-v1.0.0-ubuntu-x86_64.tgz
+        sudo mv sui-devnet-v1.0.0-ubuntu-x86_64/sui /usr/local/bin/
+    
+    - name: Test Move contracts
+      run: |
+        cd sui-contracts
+        sui move test
+
+  deploy-frontend:
+    needs: test-contracts
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm install
+        
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+        
+    - name: Deploy to Replit
+      run: |
+        # Add Replit deployment commands
+        echo "Deploying to Replit..." 

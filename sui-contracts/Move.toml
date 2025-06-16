@@ -1,0 +1,14 @@
+[package]
+name = "web3_chess_game"
+version = "1.0.0"
+edition = "2024.beta"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+
+[addresses]
+chess_game = "0x0"
+chess_nft = "0x0"
+chess_tournament = "0x0"
+chess_ai = "0x0"
+chess_nautilus = "0x0" 
