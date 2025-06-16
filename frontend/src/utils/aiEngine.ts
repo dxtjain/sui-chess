@@ -60,7 +60,7 @@ export class MinimaxAI implements ChessAI {
   ): [number, number, number, number] {
     this.randomnessFactor = randomnessFactor;
     
-    const bestMove = this.minimax(board, depth, true, -Infinity, Infinity, true);
+    const bestMove = this.minimax(board, depth, false, -Infinity, Infinity, true);
     return bestMove.move || [0, 0, 0, 0];
   }
 
@@ -235,9 +235,9 @@ export class MinimaxAI implements ChessAI {
       }
     }
 
-    // Captures
-    for (const deltaCol of [-1, 1]) {
-      const newCol = fromCol + deltaCol;
+    // Diagonal captures
+    for (const colOffset of [-1, 1]) {
+      const newCol = fromCol + colOffset;
       if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
         const targetPiece = board[newRow][newCol];
         if (targetPiece !== 0 && (targetPiece > 0) !== isWhite) {
@@ -256,9 +256,9 @@ export class MinimaxAI implements ChessAI {
       [1, -2], [1, 2], [2, -1], [2, 1]
     ];
 
-    for (const [deltaRow, deltaCol] of knightMoves) {
-      const newRow = fromRow + deltaRow;
-      const newCol = fromCol + deltaCol;
+    for (const [rowOffset, colOffset] of knightMoves) {
+      const newRow = fromRow + rowOffset;
+      const newCol = fromCol + colOffset;
       
       if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
         const targetPiece = board[newRow][newCol];
@@ -272,19 +272,22 @@ export class MinimaxAI implements ChessAI {
   }
 
   private generateBishopMoves(board: number[][], fromRow: number, fromCol: number, isWhite: boolean): [number, number, number, number][] {
-    return this.generateSlidingMoves(board, fromRow, fromCol, isWhite, [[-1, -1], [-1, 1], [1, -1], [1, 1]]);
+    const directions: [number, number][] = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+    return this.generateSlidingMoves(board, fromRow, fromCol, isWhite, directions);
   }
 
   private generateRookMoves(board: number[][], fromRow: number, fromCol: number, isWhite: boolean): [number, number, number, number][] {
-    return this.generateSlidingMoves(board, fromRow, fromCol, isWhite, [[-1, 0], [1, 0], [0, -1], [0, 1]]);
+    const directions: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    return this.generateSlidingMoves(board, fromRow, fromCol, isWhite, directions);
   }
 
   private generateQueenMoves(board: number[][], fromRow: number, fromCol: number, isWhite: boolean): [number, number, number, number][] {
-    return this.generateSlidingMoves(board, fromRow, fromCol, isWhite, [
+    const directions: [number, number][] = [
       [-1, -1], [-1, 0], [-1, 1],
       [0, -1],           [0, 1],
       [1, -1],  [1, 0],  [1, 1]
-    ]);
+    ];
+    return this.generateSlidingMoves(board, fromRow, fromCol, isWhite, directions);
   }
 
   private generateKingMoves(board: number[][], fromRow: number, fromCol: number, isWhite: boolean): [number, number, number, number][] {
@@ -295,9 +298,9 @@ export class MinimaxAI implements ChessAI {
       [1, -1],  [1, 0],  [1, 1]
     ];
 
-    for (const [deltaRow, deltaCol] of kingMoves) {
-      const newRow = fromRow + deltaRow;
-      const newCol = fromCol + deltaCol;
+    for (const [rowOffset, colOffset] of kingMoves) {
+      const newRow = fromRow + rowOffset;
+      const newCol = fromCol + colOffset;
       
       if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
         const targetPiece = board[newRow][newCol];
@@ -319,24 +322,28 @@ export class MinimaxAI implements ChessAI {
   ): [number, number, number, number][] {
     const moves: [number, number, number, number][] = [];
 
-    for (const [deltaRow, deltaCol] of directions) {
-      let newRow = fromRow + deltaRow;
-      let newCol = fromCol + deltaCol;
+    for (const [rowDir, colDir] of directions) {
+      let newRow = fromRow + rowDir;
+      let newCol = fromCol + colDir;
 
       while (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
         const targetPiece = board[newRow][newCol];
         
         if (targetPiece === 0) {
+          // Empty square
           moves.push([fromRow, fromCol, newRow, newCol]);
         } else {
+          // Occupied square
           if ((targetPiece > 0) !== isWhite) {
+            // Can capture opponent's piece
             moves.push([fromRow, fromCol, newRow, newCol]);
           }
+          // Can't move further in this direction
           break;
         }
-        
-        newRow += deltaRow;
-        newCol += deltaCol;
+
+        newRow += rowDir;
+        newCol += colDir;
       }
     }
 
@@ -354,28 +361,33 @@ export class MinimaxAI implements ChessAI {
   }
 
   private isGameOver(board: number[][]): boolean {
-    // Simplified game over detection
+    // Check if either king is missing (simple game over condition)
     let whiteKing = false;
     let blackKing = false;
     
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
-        const piece = board[row][col];
-        if (piece === 6) whiteKing = true;
-        if (piece === -6) blackKing = true;
+        if (board[row][col] === 6) whiteKing = true;
+        if (board[row][col] === -6) blackKing = true;
       }
     }
     
     return !whiteKing || !blackKing;
   }
 
-  // Public method to evaluate a position (for UI feedback)
+  // Public methods for external use
   public evaluatePosition(board: number[][]): number {
     return this.evaluateBoard(board);
   }
 
-  // Public method to get legal moves for a piece (for UI validation)
   public getLegalMoves(board: number[][], fromRow: number, fromCol: number): [number, number, number, number][] {
+    const piece = board[fromRow][fromCol];
+    if (piece === 0) return [];
+    
     return this.generatePieceMoves(board, fromRow, fromCol);
+  }
+
+  public getAllMoves(board: number[][], isWhite: boolean): [number, number, number, number][] {
+    return this.generateAllMoves(board, isWhite);
   }
 } 

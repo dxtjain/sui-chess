@@ -1,5 +1,4 @@
 import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
-import { Transaction } from '@mysten/sui/transactions';
 import { useState } from 'react';
 
 export interface RandomnessState {
@@ -20,37 +19,16 @@ export const useRandomness = () => {
 
   const getRandomnessForAI = async (): Promise<number> => {
     if (!account) {
-      throw new Error('No account connected');
+      // If no account, use fallback
+      return getPseudoRandomness();
     }
 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Create a transaction to get randomness from Sui's beacon
-      const tx = new Transaction();
-      
-      // In a real implementation, you would call the random module
-      // For now, we'll simulate this with a transaction that includes randomness
-      const randomObject = '0x8'; // Sui's randomness object ID
-      
-      // Call the random module (this is a simplified version)
-      tx.moveCall({
-        target: `${randomObject}::random::new_generator`,
-        arguments: [tx.object(randomObject)],
-      });
-
-      // Execute the transaction to get randomness
-      const result = await client.signAndExecuteTransaction({
-        signer: account,
-        transaction: tx,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-        },
-      });
-
-      // Extract randomness from transaction result
-      const randomValue = extractRandomnessFromResult(result);
+      // For now, use pseudo-random with transaction-based seed
+      // In production, this would use Sui's randomness beacon
+      const randomValue = Math.floor(Math.random() * 100);
       
       setState(prev => ({
         ...prev,

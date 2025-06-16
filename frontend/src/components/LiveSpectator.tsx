@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Users, Clock, Trophy, TrendingUp } from 'lucide-react';
-import { useSuiClient } from '@mysten/dapp-kit';
 
 interface LiveMatch {
   id: string;
@@ -32,7 +31,7 @@ export const LiveSpectator: React.FC<LiveSpectatorProps> = ({ onWatchMatch }) =>
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'PvP' | 'PvAI' | 'AIvAI'>('all');
   
-  const client = useSuiClient();
+  // const client = useSuiClient(); // Currently unused
 
   useEffect(() => {
     fetchLiveMatches();

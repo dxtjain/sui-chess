@@ -1,227 +1,293 @@
 import React, { useState, useEffect } from 'react';
-import { useSuiClient, useCurrentAccount } from '@mysten/dapp-kit';
+import { useSuiClient, useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
+import { toast } from 'react-hot-toast';
 
 interface Tournament {
   id: string;
   name: string;
-  entryFee: string;
-  participants: string[];
+  status: 'upcoming' | 'active' | 'completed';
+  entryFee: number;
+  prizePool: number;
+  participants: number;
   maxParticipants: number;
-  status: 'registration' | 'active' | 'completed';
-  prizePool: string;
   startTime: number;
   endTime: number;
+  format: 'single-elimination' | 'swiss' | 'round-robin';
 }
 
 export const Tournament: React.FC = () => {
+  // const client = useSuiClient(); // Currently unused
+  const account = useCurrentAccount();
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
-  
-  const client = useSuiClient();
-  const account = useCurrentAccount();
 
   useEffect(() => {
-    fetchTournaments();
+    loadTournaments();
   }, []);
 
-  const fetchTournaments = async () => {
+  const loadTournaments = async () => {
     try {
-      // Fetch tournament data from Sui
+      setLoading(true);
+      
+      // Mock tournament data for now
+      // In production, this would fetch from Sui blockchain
       const mockTournaments: Tournament[] = [
         {
-          id: '0x123',
-          name: 'Weekly Chess Championship',
-          entryFee: '1.0',
-          participants: ['0x1', '0x2', '0x3'],
+          id: '1',
+          name: 'Weekly Blitz Championship',
+          status: 'upcoming',
+          entryFee: 5,
+          prizePool: 100,
+          participants: 8,
           maxParticipants: 16,
-          status: 'registration',
-          prizePool: '12.5',
-          startTime: Date.now() + 3600000,
-          endTime: Date.now() + 7200000,
+          startTime: Date.now() + 3600000, // 1 hour from now
+          endTime: Date.now() + 7200000,   // 2 hours from now
+          format: 'single-elimination'
         },
-        // Add more tournaments...
+        {
+          id: '2',
+          name: 'Monthly Grand Prix',
+          status: 'active',
+          entryFee: 10,
+          prizePool: 500,
+          participants: 32,
+          maxParticipants: 32,
+          startTime: Date.now() - 1800000, // 30 minutes ago
+          endTime: Date.now() + 5400000,   // 90 minutes from now
+          format: 'swiss'
+        },
+        {
+          id: '3',
+          name: 'Season Finale',
+          status: 'completed',
+          entryFee: 25,
+          prizePool: 1000,
+          participants: 64,
+          maxParticipants: 64,
+          startTime: Date.now() - 86400000, // 1 day ago
+          endTime: Date.now() - 82800000,   // 23 hours ago
+          format: 'single-elimination'
+        }
       ];
-      
+
       setTournaments(mockTournaments);
     } catch (error) {
-      console.error('Error fetching tournaments:', error);
+      console.error('Error loading tournaments:', error);
+      toast.error('Failed to load tournaments');
     } finally {
       setLoading(false);
     }
   };
 
-  const joinTournament = async (tournament: Tournament) => {
+  const joinTournament = async (tournamentId: string) => {
     if (!account) {
-      alert('Please connect your wallet');
+      toast.error('Please connect your wallet first');
       return;
     }
 
     try {
       const tx = new Transaction();
       
-      const entryFee = tx.splitCoins(tx.gas, [
-        tx.pure.u64(parseFloat(tournament.entryFee) * 1000000000)
-      ]);
-
+      // Mock tournament joining transaction
+      // In production, this would call the tournament smart contract
       tx.moveCall({
-        target: '${PACKAGE_ID}::tournament::join_tournament',
+        target: '0x1::tournament::join_tournament',
         arguments: [
-          tx.object(tournament.id),
-          entryFee,
+          tx.pure.string(tournamentId),
+          tx.pure.u64(Date.now()),
         ],
       });
 
-      await client.signAndExecuteTransaction({
-        signer: account,
-        transaction: tx,
-      });
-
-      alert('Successfully joined tournament!');
-      fetchTournaments(); // Refresh data
+      signAndExecuteTransaction(
+        {
+          transaction: tx,
+          options: {
+            showEffects: true,
+            showObjectChanges: true,
+          },
+        },
+        {
+          onSuccess: (result) => {
+            console.log('Tournament joined successfully:', result);
+            toast.success('Successfully joined tournament!');
+            loadTournaments(); // Refresh tournament list
+          },
+          onError: (error) => {
+            console.error('Error joining tournament:', error);
+            toast.error('Failed to join tournament');
+          },
+        }
+      );
     } catch (error) {
-      console.error('Error joining tournament:', error);
-      alert('Failed to join tournament');
+      console.error('Error preparing tournament transaction:', error);
+      toast.error('Failed to prepare tournament transaction');
     }
   };
 
-  const createTournament = async (
-    name: string,
-    entryFee: string,
-    maxParticipants: number,
-    durationHours: number
-  ) => {
-    if (!account) return;
+  const createTournament = async (tournamentData: Partial<Tournament>) => {
+    if (!account) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
 
     try {
       const tx = new Transaction();
-
+      
+      // Mock tournament creation transaction
       tx.moveCall({
-        target: '${PACKAGE_ID}::tournament::create_tournament',
+        target: '0x1::tournament::create_tournament',
         arguments: [
-          tx.pure.string(name),
-          tx.pure.u64(parseFloat(entryFee) * 1000000000),
-          tx.pure.u32(maxParticipants),
-          tx.pure.u64(durationHours),
+          tx.pure.string(tournamentData.name || 'New Tournament'),
+          tx.pure.u64(tournamentData.entryFee || 0),
+          tx.pure.u64(tournamentData.maxParticipants || 16),
+          tx.pure.u64(Date.now()),
         ],
       });
 
-      await client.signAndExecuteTransaction({
-        signer: account,
-        transaction: tx,
-      });
-
-      alert('Tournament created successfully!');
-      fetchTournaments();
+      signAndExecuteTransaction(
+        {
+          transaction: tx,
+          options: {
+            showEffects: true,
+            showObjectChanges: true,
+          },
+        },
+        {
+          onSuccess: (result) => {
+            console.log('Tournament created successfully:', result);
+            toast.success('Tournament created successfully!');
+            loadTournaments(); // Refresh tournament list
+          },
+          onError: (error) => {
+            console.error('Error creating tournament:', error);
+            toast.error('Failed to create tournament');
+          },
+        }
+      );
     } catch (error) {
-      console.error('Error creating tournament:', error);
+      console.error('Error preparing tournament creation:', error);
+      toast.error('Failed to prepare tournament creation');
+    }
+  };
+
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+
+  const getStatusColor = (status: Tournament['status']) => {
+    switch (status) {
+      case 'upcoming': return '#f59e0b';
+      case 'active': return '#10b981';
+      case 'completed': return '#6b7280';
+      default: return '#6b7280';
     }
   };
 
   if (loading) {
-    return <div>Loading tournaments...</div>;
+    return (
+      <div className="tournament-container">
+        <div className="loading">
+          <div className="loading-spinner"></div>
+          <p>Loading tournaments...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="tournament-system">
-      <h2>🏆 Chess Tournaments</h2>
-      
-      <div className="tournament-grid">
+    <div className="tournament-container">
+      <div className="tournament-header">
+        <h2>🏁 Chess Tournaments</h2>
+        <p>Compete in organized tournaments and win prizes!</p>
+      </div>
+
+      <div className="tournament-actions">
+        <button 
+          className="create-tournament-btn"
+          onClick={() => {
+            // Mock tournament creation
+            createTournament({
+              name: 'Custom Tournament',
+              entryFee: 5,
+              maxParticipants: 16,
+              format: 'single-elimination'
+            });
+          }}
+        >
+          Create Tournament
+        </button>
+      </div>
+
+      <div className="tournament-list">
         {tournaments.map((tournament) => (
           <div key={tournament.id} className="tournament-card">
-            <h3>{tournament.name}</h3>
-            <div className="tournament-info">
-              <p>Entry Fee: {tournament.entryFee} SUI</p>
-              <p>Prize Pool: {tournament.prizePool} SUI</p>
-              <p>Participants: {tournament.participants.length}/{tournament.maxParticipants}</p>
-              <p>Status: {tournament.status}</p>
-            </div>
-            
-            {tournament.status === 'registration' && (
-              <button
-                onClick={() => joinTournament(tournament)}
-                disabled={tournament.participants.length >= tournament.maxParticipants}
+            <div className="tournament-header-info">
+              <h3>{tournament.name}</h3>
+              <span 
+                className="status-badge"
+                style={{ backgroundColor: getStatusColor(tournament.status) }}
               >
-                Join Tournament
-              </button>
-            )}
-            
-            {tournament.status === 'active' && (
-              <button onClick={() => setSelectedTournament(tournament)}>
-                View Bracket
-              </button>
-            )}
+                {tournament.status.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="tournament-details">
+              <div className="detail-item">
+                <span className="label">Format:</span>
+                <span className="value">{tournament.format}</span>
+              </div>
+              <div className="detail-item">
+                <span className="label">Entry Fee:</span>
+                <span className="value">{tournament.entryFee} SUI</span>
+              </div>
+              <div className="detail-item">
+                <span className="label">Prize Pool:</span>
+                <span className="value">{tournament.prizePool} SUI</span>
+              </div>
+              <div className="detail-item">
+                <span className="label">Participants:</span>
+                <span className="value">{tournament.participants}/{tournament.maxParticipants}</span>
+              </div>
+              <div className="detail-item">
+                <span className="label">Start Time:</span>
+                <span className="value">{formatTime(tournament.startTime)}</span>
+              </div>
+            </div>
+
+            <div className="tournament-actions">
+              {tournament.status === 'upcoming' && (
+                <button 
+                  className="join-btn"
+                  onClick={() => joinTournament(tournament.id)}
+                  disabled={tournament.participants >= tournament.maxParticipants}
+                >
+                  {tournament.participants >= tournament.maxParticipants ? 'Full' : 'Join Tournament'}
+                </button>
+              )}
+              {tournament.status === 'active' && (
+                <button className="spectate-btn">
+                  Watch Live
+                </button>
+              )}
+              {tournament.status === 'completed' && (
+                <button className="results-btn">
+                  View Results
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="create-tournament">
-        <h3>Create New Tournament</h3>
-        <CreateTournamentForm onSubmit={createTournament} />
-      </div>
+      {tournaments.length === 0 && (
+        <div className="no-tournaments">
+          <p>No tournaments available at the moment.</p>
+          <p>Check back later or create your own tournament!</p>
+        </div>
+      )}
     </div>
-  );
-};
-
-interface CreateTournamentFormProps {
-  onSubmit: (name: string, entryFee: string, maxParticipants: number, duration: number) => void;
-}
-
-const CreateTournamentForm: React.FC<CreateTournamentFormProps> = ({ onSubmit }) => {
-  const [name, setName] = useState('');
-  const [entryFee, setEntryFee] = useState('1.0');
-  const [maxParticipants, setMaxParticipants] = useState(16);
-  const [duration, setDuration] = useState(24);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(name, entryFee, maxParticipants, duration);
-    
-    // Reset form
-    setName('');
-    setEntryFee('1.0');
-    setMaxParticipants(16);
-    setDuration(24);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="create-tournament-form">
-      <input
-        type="text"
-        placeholder="Tournament Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
-      <input
-        type="number"
-        placeholder="Entry Fee (SUI)"
-        value={entryFee}
-        onChange={(e) => setEntryFee(e.target.value)}
-        step="0.1"
-        min="0.1"
-        required
-      />
-      <input
-        type="number"
-        placeholder="Max Participants"
-        value={maxParticipants}
-        onChange={(e) => setMaxParticipants(parseInt(e.target.value))}
-        min="2"
-        max="64"
-        required
-      />
-      <input
-        type="number"
-        placeholder="Duration (hours)"
-        value={duration}
-        onChange={(e) => setDuration(parseInt(e.target.value))}
-        min="1"
-        max="168"
-        required
-      />
-      <button type="submit">Create Tournament</button>
-    </form>
   );
 }; 

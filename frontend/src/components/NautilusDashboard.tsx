@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Plug, Shield, Target, BarChart3, Gift, Power, Info } from 'lucide-react';
 import { useNautilus } from '../hooks/useNautilus';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 
 export const NautilusDashboard: React.FC = () => {
   const {

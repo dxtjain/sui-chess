@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { MinimaxAI } from '../utils/aiEngine';
 import { useRandomness } from '../hooks/useRandomness';
-import { NautilusCore } from '../utils/nautilusCore';
+import { getPieceSymbol, initializeChessBoard, isWhitePiece } from '../utils/chessUtils';
 
 interface GameSettings {
   mode: 'PvP' | 'PvAI' | 'AIvAI';
@@ -15,9 +15,6 @@ interface ChessBoardProps {
   gameSettings: GameSettings;
   onGameEnd: (winner: string | null, gameStats: any) => void;
 }
-
-type PieceType = number;
-type Position = [number, number];
 
 interface GameState {
   board: number[][];
@@ -35,7 +32,7 @@ interface GameState {
 
 export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd }) => {
   const [gameState, setGameState] = useState<GameState>(() => ({
-    board: initializeBoard(),
+    board: initializeChessBoard(),
     currentPlayer: 'white',
     selectedSquare: null,
     gameStatus: 'active',
@@ -71,6 +68,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
           makeMove(fromRow, fromCol, toRow, toCol);
         }, 500); // Slight delay for better UX
       } else {
+        console.error('AI attempted invalid move:', [fromRow, fromCol, toRow, toCol]);
         toast.error('AI made an invalid move');
       }
     } catch (error) {
@@ -113,10 +111,10 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
       } else {
         // Select new piece if clicking on own piece
         const piece = gameState.board[row][col];
-        const isWhitePiece = piece > 0;
+        const isWhiteP = isWhitePiece(piece);
         const isCurrentPlayerPiece = 
-          (gameState.currentPlayer === 'white' && isWhitePiece) ||
-          (gameState.currentPlayer === 'black' && !isWhitePiece);
+          (gameState.currentPlayer === 'white' && isWhiteP) ||
+          (gameState.currentPlayer === 'black' && !isWhiteP);
 
         if (piece !== 0 && isCurrentPlayerPiece) {
           setGameState(prev => ({ ...prev, selectedSquare: { row, col } }));
@@ -129,10 +127,10 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
       // Select a piece
       const piece = gameState.board[row][col];
       if (piece !== 0) {
-        const isWhitePiece = piece > 0;
+        const isWhiteP = isWhitePiece(piece);
         const isCurrentPlayerPiece = 
-          (gameState.currentPlayer === 'white' && isWhitePiece) ||
-          (gameState.currentPlayer === 'black' && !isWhitePiece);
+          (gameState.currentPlayer === 'white' && isWhiteP) ||
+          (gameState.currentPlayer === 'black' && !isWhiteP);
 
         if (isCurrentPlayerPiece) {
           setGameState(prev => ({ ...prev, selectedSquare: { row, col } }));
@@ -144,7 +142,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
   };
 
   const makeMove = (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
-    setGameState((prev: GameState) => {
+    setGameState((prev: GameState): GameState => {
       const newBoard = prev.board.map(row => [...row]);
       const piece = newBoard[fromRow][fromCol];
       const capturedPiece = newBoard[toRow][toCol];
@@ -164,14 +162,14 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
       }
 
       // Generate move notation
-      const moveNotation = generateMoveNotation(fromRow, fromCol, toRow, toCol, piece, capturedPiece);
+      const moveNotation = generateMoveNotation(fromRow, fromCol, toRow, toCol, capturedPiece);
       const newMoveHistory = [...prev.moveHistory, moveNotation];
 
       // Check for game end
-      const nextPlayer = prev.currentPlayer === 'white' ? 'black' : 'white';
+      const nextPlayer: 'white' | 'black' = prev.currentPlayer === 'white' ? 'black' : 'white';
       const gameStatus = checkGameStatus(newBoard, nextPlayer);
 
-      const newState = {
+      const newState: GameState = {
         ...prev,
         board: newBoard,
         currentPlayer: nextPlayer,
@@ -222,6 +220,14 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
     // Can't capture own pieces
     if (targetPiece !== 0 && (piece > 0) === (targetPiece > 0)) return false;
 
+    // Check if current player is trying to move their own piece
+    const isWhiteP = isWhitePiece(piece);
+    const isCurrentPlayerPiece = 
+      (gameState.currentPlayer === 'white' && isWhiteP) ||
+      (gameState.currentPlayer === 'black' && !isWhiteP);
+
+    if (!isCurrentPlayerPiece) return false;
+
     // Use AI engine for move validation
     const legalMoves = ai.getLegalMoves(gameState.board, fromRow, fromCol);
     return legalMoves.some(([fR, fC, tR, tC]) => 
@@ -230,21 +236,27 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
   };
 
   const checkGameStatus = (board: number[][], player: 'white' | 'black'): GameState['gameStatus'] => {
-    // Simplified game status checking
-    // In a full implementation, you would check for:
-    // - Checkmate
-    // - Stalemate
-    // - Insufficient material
-    // - 50-move rule
-    // - Threefold repetition
+    // Check if kings are still on the board
+    let whiteKing = false;
+    let blackKing = false;
     
-    const isWhite = player === 'white';
-    const moves: any[] = []; // Simplified for now
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        if (board[row][col] === 6) whiteKing = true;
+        if (board[row][col] === -6) blackKing = true;
+      }
+    }
     
-    if (moves.length === 0) {
-      // No legal moves - either checkmate or stalemate
-      // For now, we'll assume it's checkmate if the king is in check
-      return 'checkmate';
+    // Simple game over condition - if a king is captured
+    if (!whiteKing) return 'checkmate';
+    if (!blackKing) return 'checkmate';
+
+    // Count available moves for current player
+    const allMoves = ai.getAllMoves ? ai.getAllMoves(board, player === 'white') : [];
+    
+    // If no moves available, it's either checkmate or stalemate
+    if (allMoves.length === 0) {
+      return 'stalemate'; // Simplified - should check if in check
     }
     
     return 'active';
@@ -255,7 +267,6 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
     fromCol: number, 
     toRow: number, 
     toCol: number, 
-    piece: number, 
     capturedPiece: number
   ): string => {
     const files = 'abcdefgh';
@@ -276,9 +287,15 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
     const isDark = (row + col) % 2 === 1;
     
     // Show possible moves for selected piece
-    const showPossibleMove = gameState.selectedSquare && 
-      ai.getLegalMoves(gameState.board, gameState.selectedSquare.row, gameState.selectedSquare.col)
-        .some(([,, tR, tC]) => tR === row && tC === col);
+    let showPossibleMove = false;
+    if (gameState.selectedSquare) {
+      try {
+        const possibleMoves = ai.getLegalMoves(gameState.board, gameState.selectedSquare.row, gameState.selectedSquare.col);
+        showPossibleMove = possibleMoves.some(([,, tR, tC]) => tR === row && tC === col);
+      } catch (error) {
+        console.error('Error getting legal moves:', error);
+      }
+    }
 
     return (
       <div
@@ -395,25 +412,4 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
       </div>
     </div>
   );
-};
-
-function initializeBoard(): number[][] {
-  return [
-    [-4, -2, -3, -5, -6, -3, -2, -4],
-    [-1, -1, -1, -1, -1, -1, -1, -1],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [1, 1, 1, 1, 1, 1, 1, 1],
-    [4, 2, 3, 5, 6, 3, 2, 4],
-  ];
-}
-
-function getPieceSymbol(piece: number): string {
-  const symbols: { [key: number]: string } = {
-    1: '♙', 2: '♘', 3: '♗', 4: '♖', 5: '♕', 6: '♔',
-    [-1]: '♟', [-2]: '♞', [-3]: '♝', [-4]: '♜', [-5]: '♛', [-6]: '♚'
-  };
-  return symbols[piece] || '';
-} 
+}; 
