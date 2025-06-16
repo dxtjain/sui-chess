@@ -175,6 +175,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({ gameSettings, onGameEnd 
         moveHistory: newMoveHistory,
         capturedPieces: newCapturedPieces,
         moveCount: prev.moveCount + 1,
+        startTime: prev.startTime,
       };
 
       // Handle game end
