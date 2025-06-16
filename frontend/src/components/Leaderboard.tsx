@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Medal, Star, TrendingUp, Clock, Target } from 'lucide-react';
+import { Trophy, Medal, Star, TrendingUp, Target } from 'lucide-react';
 
 interface PlayerStats {
   address: string;

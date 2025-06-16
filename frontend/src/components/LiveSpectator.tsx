@@ -28,7 +28,7 @@ interface LiveSpectatorProps {
 
 export const LiveSpectator: React.FC<LiveSpectatorProps> = ({ onWatchMatch }) => {
   const [liveMatches, setLiveMatches] = useState<LiveMatch[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<LiveMatch | null>(null);
+  // const [selectedMatch, setSelectedMatch] = useState<LiveMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'PvP' | 'PvAI' | 'AIvAI'>('all');
   

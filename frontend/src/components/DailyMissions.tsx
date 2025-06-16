@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Clock, Trophy, Star, CheckCircle, Gift } from 'lucide-react';
+import { Star, CheckCircle, Gift } from 'lucide-react';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 
 interface Mission {
@@ -31,7 +31,7 @@ interface PlayerProgress {
 
 export const DailyMissions: React.FC = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [playerProgress, setPlayerProgress] = useState<PlayerProgress>({
+  const [playerProgress] = useState<PlayerProgress>({
     level: 5,
     xp: 1250,
     xpToNext: 500,
